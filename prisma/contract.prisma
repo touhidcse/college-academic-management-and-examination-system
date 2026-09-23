@@ -1,0 +1,959 @@
+// use prisma-8
+//////////////////////////////////////////////////////
+// Prisma 8 PSL Contract
+// File: prisma/contract.prisma
+//////////////////////////////////////////////////////
+
+// ==================================================
+// ENUMS
+// ==================================================
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum ProgramType {
+  HIGHER_SECONDARY
+  DEGREE
+  HONOURS
+}
+
+enum GroupType {
+  SCIENCE
+  BUSINESS_STUDIES
+  HUMANITIES
+
+  BA
+  BSS
+  BBS
+
+  ACCOUNTING
+  MANAGEMENT
+}
+
+enum AcademicStatus {
+  ACTIVE
+  COMPLETED
+  TRANSFERRED
+  DROPPED
+}
+
+enum SubjectCategory {
+  COMPULSORY
+  ELECTIVE
+  OPTIONAL
+}
+
+enum PaperType {
+  FIRST
+  SECOND
+  SINGLE
+}
+
+enum SubjectCode {
+  // =========================
+  // HSC COMMON
+  // =========================
+  BANGLA_1ST
+  BANGLA_2ND
+  ENGLISH_1ST
+  ENGLISH_2ND
+  ICT
+
+  // =========================
+  // HSC SCIENCE
+  // =========================
+  PHYSICS
+  CHEMISTRY
+  MATHEMATICS
+  BIOLOGY
+
+  // =========================
+  // HSC BUSINESS STUDIES
+  // =========================
+  ACCOUNTING
+  FINANCE_BANKING_INSURANCE
+  BUSINESS_ORGANIZATION_MANAGEMENT
+
+  // =========================
+  // HSC HUMANITIES
+  // =========================
+  CIVICS
+  ISLAMIC_HISTORY_CULTURE
+  SOCIOLOGY
+  LOGIC
+  ECONOMICS
+  ISLAMIC_STUDIES
+
+  // =========================
+  // DEGREE - 6 SUBJECTS
+  // =========================
+  DEGREE_BANGLA
+  DEGREE_ENGLISH
+  DEGREE_ICT
+  DEGREE_HISTORY
+  DEGREE_POLITICAL_SCIENCE
+  DEGREE_SOCIOLOGY
+
+  // =========================
+  // HONOURS - 6 SUBJECTS
+  // =========================
+  HONOURS_BANGLA
+  HONOURS_ENGLISH
+  HONOURS_ICT
+  HONOURS_ACCOUNTING
+  HONOURS_MANAGEMENT
+  HONOURS_ECONOMICS
+}
+
+enum ExamType {
+  HSC_HALF_YEARLY
+  HSC_ANNUAL
+  HSC_PRE_TEST
+  HSC_TEST
+
+  INCOURSE_1
+  INCOURSE_2
+}
+
+enum ExamResultStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum ExamFeeStatus {
+  UNPAID
+  PAID
+  WAIVED
+}
+
+enum PaymentGateway {
+  BKASH
+  SSLCOMMERZ
+  STRIPE
+}
+
+enum PaymentMethod {
+  BKASH
+  CARD
+  MOBILE_BANKING
+  OTHER
+}
+
+enum Grade {
+  A_PLUS
+  A
+  A_MINUS
+  B
+  C
+  D
+  F
+}
+
+
+// ==================================================
+// USER
+// ==================================================
+
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String?
+  name     String
+  phone    String?
+
+  role     Role    @default(STUDENT)
+  isActive Boolean @default(true)
+
+  student Student?
+  teacher Teacher?
+
+  auditLogs AuditLog[]
+
+  marksEntered Mark[] @relation("MarkEnteredBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+
+// ==================================================
+// STUDENT
+// ==================================================
+
+model Student {
+  id Int @id @default(autoincrement())
+
+  userId Int @unique
+
+  studentId String @unique
+
+  dateOfBirth DateTime?
+  gender      String?
+
+  guardianName  String?
+  guardianPhone String?
+  address       String?
+
+  user User @relation(  fields: [userId], references: [id])
+
+  academicRecords StudentAcademicRecord[]
+
+  subjects StudentSubject[]
+
+  marks Mark[]
+
+  results Result[]
+
+  examFees ExamFee[]
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  deletedAt DateTime?
+
+  @@index([studentId])
+  @@index([deletedAt])
+  @@map("students")
+}
+
+
+// ==================================================
+// TEACHER
+// ==================================================
+
+model Teacher {
+  id Int @id @default(autoincrement())
+
+  userId Int @unique
+
+  employeeId String @unique
+
+  designation String
+  department  String
+
+  user User @relation(   fields: [userId],  references: [id] )
+
+  assignments TeacherAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  deletedAt DateTime?
+
+  @@index([employeeId])
+  @@index([deletedAt])
+  @@map("teachers")
+}
+
+
+// ==================================================
+// ACADEMIC SESSION
+// ==================================================
+
+model AcademicSession {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+
+  startDate DateTime
+  endDate   DateTime
+
+  isActive Boolean @default(false)
+
+  academicRecords StudentAcademicRecord[]
+
+  exams Exam[]
+
+  assignments TeacherAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([isActive])
+  @@map("academic_sessions")
+}
+
+
+// ==================================================
+// ACADEMIC PROGRAM
+// ==================================================
+
+model AcademicProgram {
+  id Int @id @default(autoincrement())
+
+  name String
+  code String @unique
+
+  type ProgramType
+
+  isActive Boolean @default(true)
+
+  levels AcademicLevel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([type])
+  @@index([isActive])
+  @@map("academic_programs")
+}
+
+
+// ==================================================
+// ACADEMIC LEVEL
+// ==================================================
+
+model AcademicLevel {
+  id Int @id @default(autoincrement())
+
+  programId Int
+
+  name String
+
+  yearNumber Int
+
+  program AcademicProgram @relation( fields: [programId],  references: [id])
+
+  groups AcademicGroup[]
+
+  sections Section[]
+
+  curriculumSubjects CurriculumSubject[]
+
+  academicRecords StudentAcademicRecord[]
+
+  exams Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([programId, yearNumber])
+
+  @@index([programId])
+
+  @@map("academic_levels")
+}
+
+
+// ==================================================
+// ACADEMIC GROUP
+// ==================================================
+
+model AcademicGroup {
+  id Int @id @default(autoincrement())
+
+  academicLevelId Int
+
+  name String
+
+  code GroupType
+
+  academicLevel AcademicLevel @relation( fields: [academicLevelId], references: [id])
+
+  sections Section[]
+
+  curriculumSubjects CurriculumSubject[]
+
+  academicRecords StudentAcademicRecord[]
+
+  exams Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([academicLevelId, code])
+
+  @@index([academicLevelId])
+
+  @@map("academic_groups")
+}
+
+
+// ==================================================
+// SECTION
+// ==================================================
+
+model Section {
+  id Int @id @default(autoincrement())
+
+  academicLevelId Int
+
+  academicGroupId Int?
+
+  name String
+
+  capacity Int?
+
+  isActive Boolean @default(true)
+
+  academicLevel AcademicLevel @relation(  fields: [academicLevelId], references: [id] )
+
+  academicGroup AcademicGroup? @relation(  fields: [academicGroupId],  references: [id])
+
+  academicRecords StudentAcademicRecord[]
+
+  teacherAssignments TeacherAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([ academicLevelId, academicGroupId, name ])
+
+  @@index([academicLevelId])
+  @@index([academicGroupId])
+  @@index([isActive])
+
+  @@map("sections")
+}
+
+
+// ==================================================
+// CURRICULUM SUBJECT
+// ==================================================
+//
+// এখানে Subject আর SubjectPaper model নেই.
+// Subject সরাসরি SubjectCode enum.
+//
+// Example:
+//
+// HSC Science:
+//
+// BANGLA_1ST       -> COMPULSORY
+// BANGLA_2ND       -> COMPULSORY
+// ENGLISH_1ST      -> COMPULSORY
+// ENGLISH_2ND      -> COMPULSORY
+// ICT              -> COMPULSORY
+//
+// PHYSICS          -> ELECTIVE
+// CHEMISTRY        -> ELECTIVE
+// MATHEMATICS      -> ELECTIVE
+// BIOLOGY          -> ELECTIVE
+//
+// MATHEMATICS/BIOLOGY -> OPTIONAL
+//
+// Actual selection logic service layer-এ হবে.
+// ==================================================
+
+model CurriculumSubject {
+  id Int @id @default(autoincrement())
+
+  academicLevelId Int
+
+  academicGroupId Int?
+
+  subject SubjectCode
+
+  paperType PaperType @default(SINGLE)
+
+  category SubjectCategory
+
+  selectionGroup String?
+
+  isRequired Boolean @default(false)
+
+  academicLevel AcademicLevel @relation( fields: [academicLevelId],  references: [id] )
+
+  academicGroup AcademicGroup? @relation( fields: [academicGroupId], references: [id] )
+
+  studentSubjects StudentSubject[]
+
+  teacherAssignments TeacherAssignment[]
+
+  examSubjects ExamSubject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([  academicLevelId,  academicGroupId,  subject,  paperType ])
+
+  @@index([academicLevelId])
+  @@index([academicGroupId])
+  @@index([subject])
+  @@index([category])
+
+  @@map("curriculum_subjects")
+}
+
+
+// ==================================================
+// STUDENT ACADEMIC RECORD
+// ==================================================
+
+model StudentAcademicRecord {
+  id Int @id @default(autoincrement())
+
+  studentId Int
+
+  academicSessionId Int
+
+  academicLevelId Int
+
+  academicGroupId Int?
+
+  sectionId Int
+
+  rollNumber Int?
+
+  registrationNumber String?
+
+  status AcademicStatus @default(ACTIVE)
+
+  student Student @relation( fields: [studentId], references: [id])
+
+  academicSession AcademicSession @relation(  fields: [academicSessionId], references: [id])
+
+  academicLevel AcademicLevel @relation( fields: [academicLevelId],  references: [id])
+
+  academicGroup AcademicGroup? @relation(  fields: [academicGroupId], references: [id])
+
+  section Section @relation( fields: [sectionId],  references: [id])
+
+  subjects StudentSubject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([ studentId,  academicSessionId,  academicLevelId ])
+
+  @@index([studentId])
+  @@index([academicSessionId])
+  @@index([academicLevelId])
+  @@index([sectionId])
+  @@index([status])
+
+  @@map("student_academic_records")
+}
+
+
+// ==================================================
+// STUDENT SUBJECT
+// ==================================================
+//
+// Registration-এর সময় selected subjects এখানে থাকবে.
+//
+// Compulsory -> system automatically inserts.
+// Elective/Optional -> student selection অনুযায়ী inserts.
+//
+// ==================================================
+
+model StudentSubject {
+  id Int @id @default(autoincrement())
+
+  studentId Int
+
+  studentAcademicRecordId Int
+
+  curriculumSubjectId Int
+
+  subject SubjectCode
+
+  paperType PaperType
+
+  category SubjectCategory
+
+  student Student @relation(  fields: [studentId],  references: [id] )
+
+  academicRecord StudentAcademicRecord @relation( fields: [studentAcademicRecordId],references: [id])
+
+  curriculumSubject CurriculumSubject @relation(  fields: [curriculumSubjectId], references: [id] )
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([  studentAcademicRecordId,  subject,  paperType])
+
+  @@index([studentId])
+  @@index([studentAcademicRecordId])
+  @@index([curriculumSubjectId])
+  @@index([subject])
+  @@index([category])
+
+  @@map("student_subjects")
+}
+
+
+// ==================================================
+// TEACHER ASSIGNMENT
+// ==================================================
+
+model TeacherAssignment {
+  id Int @id @default(autoincrement())
+
+  teacherId Int
+
+  sectionId Int
+
+  curriculumSubjectId Int
+
+  academicSessionId Int
+
+  isActive Boolean @default(true)
+
+  teacher Teacher @relation( fields: [teacherId],  references: [id])
+
+  section Section @relation(  fields: [sectionId],  references: [id])
+
+  curriculumSubject CurriculumSubject @relation(  fields: [curriculumSubjectId],  references: [id])
+
+  academicSession AcademicSession @relation(  fields: [academicSessionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([ teacherId,  sectionId,  curriculumSubjectId, academicSessionId])
+
+  @@index([teacherId])
+  @@index([sectionId])
+  @@index([curriculumSubjectId])
+  @@index([academicSessionId])
+  @@index([isActive])
+
+  @@map("teacher_assignments")
+}
+
+
+// ==================================================
+// EXAM
+// ==================================================
+
+model Exam {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  examType ExamType
+
+  academicSessionId Int
+
+  academicLevelId Int
+
+  academicGroupId Int?
+
+  startDate DateTime?
+
+  endDate DateTime?
+
+  resultPublished Boolean @default(false)
+
+  academicSession AcademicSession @relation(  fields: [academicSessionId], references: [id] )
+
+  academicLevel AcademicLevel @relation( fields: [academicLevelId],  references: [id] )
+
+  academicGroup AcademicGroup? @relation( fields: [academicGroupId],  references: [id])
+
+  examSubjects ExamSubject[]
+
+  results Result[]
+
+  examFees ExamFee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([academicSessionId])
+  @@index([academicLevelId])
+  @@index([academicGroupId])
+  @@index([examType])
+  @@index([resultPublished])
+
+  @@map("exams")
+}
+
+
+// ==================================================
+// EXAM SUBJECT
+// ==================================================
+
+model ExamSubject {
+  id Int @id @default(autoincrement())
+
+  examId Int
+
+  curriculumSubjectId Int
+
+  subject SubjectCode
+
+  paperType PaperType
+
+  fullMarks Int
+
+  mcqFullMarks Int?
+  creativeFullMarks Int?
+  practicalFullMarks Int?
+
+  mcqPassMarks Int?
+  creativePassMarks Int?
+  practicalPassMarks Int?
+
+  passMarks Int?
+
+  exam Exam @relation(  fields: [examId],  references: [id])
+
+  curriculumSubject CurriculumSubject @relation( fields: [curriculumSubjectId],  references: [id] )
+
+  marks Mark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([ examId,  curriculumSubjectId ])
+
+  @@index([examId])
+  @@index([curriculumSubjectId])
+  @@index([subject])
+
+  @@map("exam_subjects")
+}
+
+
+// ==================================================
+// MARK
+// ==================================================
+
+model Mark {
+  id Int @id @default(autoincrement())
+
+  examSubjectId Int
+
+  studentId Int
+
+  mcqMark Int?
+
+  creativeMark Int?
+
+  practicalMark Int?
+
+  obtainedMark Int
+
+  isPassed Boolean
+
+  grade Grade?
+
+  gradePoint Float?
+
+  enteredBy Int?
+
+  examSubject ExamSubject @relation( fields: [examSubjectId], references: [id])
+
+  student Student @relation( fields: [studentId], references: [id] )
+
+  enteredByUser User? @relation("MarkEnteredBy", fields: [enteredBy], references: [id] )
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([ examSubjectId, studentId ])
+
+  @@index([studentId])
+  @@index([examSubjectId])
+  @@index([isPassed])
+
+  @@map("marks")
+}
+
+
+// ==================================================
+// RESULT
+// ==================================================
+
+model Result {
+  id Int @id @default(autoincrement())
+
+  examId Int
+
+  studentId Int
+
+  totalMarks Int
+
+  obtainedMarks Int
+
+  gpa Float?
+
+  status ExamResultStatus @default(DRAFT)
+
+  publishedAt DateTime?
+
+  exam Exam @relation(  fields: [examId],  references: [id])
+
+  student Student @relation(fields: [studentId],  references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([  examId,   studentId])
+
+  @@index([studentId])
+  @@index([examId])
+  @@index([status])
+
+  @@map("results")
+}
+
+
+// ==================================================
+// EXAM FEE
+// ==================================================
+
+model ExamFee {
+  id Int @id @default(autoincrement())
+
+  examId Int
+
+  studentId Int
+
+  // BDT integer amount
+  amount Int
+
+  dueDate DateTime?
+
+  status ExamFeeStatus @default(UNPAID)
+
+  paidAt DateTime?
+
+  exam Exam @relation( fields: [examId],  references: [id])
+
+  student Student @relation( fields: [studentId], references: [id])
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([ examId, studentId ])
+
+  @@index([examId])
+  @@index([studentId])
+  @@index([status])
+
+  @@map("exam_fees")
+}
+
+
+// ==================================================
+// PAYMENT
+// ==================================================
+
+model Payment {
+  id Int @id @default(autoincrement())
+
+  examFeeId Int
+
+  studentId Int
+
+  // BDT integer amount
+  amount Int
+
+  gateway PaymentGateway
+
+  paymentMethod PaymentMethod
+
+  status PaymentStatus @default(PENDING)
+
+  gatewayTransactionId String?
+
+  initiatedAt DateTime @default(now())
+
+  completedAt DateTime?
+
+  examFee ExamFee @relation( fields: [examFeeId],  references: [id])
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  transactions PaymentTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([examFeeId])
+  @@index([studentId])
+  @@index([status])
+  @@index([gateway])
+  @@index([gatewayTransactionId])
+
+  @@map("payments")
+}
+
+
+// ==================================================
+// PAYMENT TRANSACTION
+// ==================================================
+
+model PaymentTransaction {
+  id Int @id @default(autoincrement())
+
+  paymentId Int
+
+  gateway PaymentGateway
+
+  gatewayTransactionId String
+
+  // BDT integer amount
+  amount Int
+
+  status PaymentStatus
+
+  responseData Json?
+
+  payment Payment @relation( fields: [paymentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([gatewayTransactionId])
+  @@index([status])
+
+  @@map("payment_transactions")
+}
+
+
+// ==================================================
+// AUDIT LOG
+// ==================================================
+
+model AuditLog {
+  id Int @id @default(autoincrement())
+
+  userId Int?
+
+  action String
+
+  entity String
+
+  entityId String?
+
+  oldData Json?
+
+  newData Json?
+
+  ipAddress String?
+
+  userAgent String?
+
+  user User? @relation( fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+
+  @@map("audit_logs")
+}

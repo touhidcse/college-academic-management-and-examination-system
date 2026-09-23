@@ -1,4 +1,8 @@
 node_modules
-   dist
-   .env
-   generated
+dist
+generated
+/generated/prisma
+.env
+
+.vercel
+.env*
